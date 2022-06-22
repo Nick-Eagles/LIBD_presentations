@@ -13,6 +13,8 @@ library('sessioninfo')
 out_path = here('data', 'spe.h5ad')
 sample_id = '151507'
 
+#   Given a SingleCellExperiment, convert to an AnnData and write to disk at the
+#   path [out_path] (as an h5ad file)
 write_anndata = function(sce, out_path) {
     invisible(
         basiliskRun(

@@ -1,3 +1,9 @@
+#   This python script is intended to be run interactively. At JHPCE, one
+#   should load the cell2location/0.8a0 module prior to invoking python. Outside
+#   of JHPCE, to create a similar python virtual environment, see:
+#
+#   https://github.com/LieberInstitute/jhpce_mod_source/tree/master/cell2location/0.8a0
+
 import scanpy as sc
 import pyhere
 from PIL import Image
