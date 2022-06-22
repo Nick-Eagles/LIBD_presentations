@@ -9,5 +9,6 @@ src_dir=/dcl02/lieber/ajaffe/SpatialTranscriptomics/HumanPilot/10X
 sample=151507
 
 #   Symlink outputs from spaceranger that we'll reference later
+mkdir data
 ln -s $src_dir/$sample/tissue_hires_image.png data/
 ln -s $src_dir/$sample/scalefactors_json.json data/
