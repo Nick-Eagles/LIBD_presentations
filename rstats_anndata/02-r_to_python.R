@@ -10,7 +10,7 @@ library('here')
 library('basilisk')
 library('sessioninfo')
 
-out_path = here('data', 'spe.h5ad')
+out_path = here('rstats_anndata', 'data', 'spe.h5ad')
 sample_id = '151507'
 
 #   Given a SingleCellExperiment, convert to an AnnData and write to disk at the

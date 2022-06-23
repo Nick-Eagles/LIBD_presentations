@@ -11,9 +11,9 @@ import json
 import numpy as np
 import matplotlib.pyplot as plt
 
-adata_path = pyhere.here('data', 'spe.h5ad')
-json_path = pyhere.here('data', 'scalefactors_json.json')
-hires_img_path = pyhere.here('data', 'tissue_hires_image.png')
+adata_path = pyhere.here('rstats_anndata', 'data', 'spe.h5ad')
+json_path = pyhere.here('rstats_anndata', 'data', 'scalefactors_json.json')
+hires_img_path = pyhere.here('rstats_anndata', 'data', 'tissue_hires_image.png')
 
 sample_name = '151507'
 spatial_coords_names = ['pxl_row_in_fullres', 'pxl_col_in_fullres']
