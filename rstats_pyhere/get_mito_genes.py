@@ -17,12 +17,12 @@ Path(os.path.dirname(genes_path)).mkdir(exist_ok=True)
 adata_vis = sc.datasets.visium_sge(sample_id="V1_Human_Lymph_Node")
 
 #   Form a list of Ensembl IDs for mitochondrial genes
-a = [gene for gene in adata_vis.var_names if gene.startswith('MT-')]
-b = adata_vis.var['gene_ids'].loc[a].tolist()
+mito_symbols = [gene for gene in adata_vis.var_names if gene.startswith('MT-')]
+mito_ensembl = adata_vis.var['gene_ids'].loc[mito_symbols].tolist()
 
 #   Write to plaintext with one gene ID per line
 with open(genes_path, 'w') as f:
-    f.writelines('\n'.join(b) + '\n')
+    f.writelines('\n'.join(mito_ensembl) + '\n')
 
 #   Print imported modules and versions
 session_info.show(html = False)
