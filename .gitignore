@@ -1,2 +1,4 @@
 rstats_anndata/data
 rstats_pyhere/data
+rstats_slurmjobs/logs
+rstats_slurmjobs/plots
