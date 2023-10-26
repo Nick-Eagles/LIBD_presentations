@@ -1,5 +1,3 @@
-remotes::install_github('LieberInstitute/slurmjobs')
-
 library(slurmjobs)
 library(dplyr)
 
@@ -19,9 +17,13 @@ anonymize = function(job_df, var_names) {
 #   Monitor partitions and check how busy the cluster is
 ################################################################################
 
-#   Summarize how busy the cluster is for the partitions you're able to access
-part_df <- partition_info(partition = NULL, all_nodes = FALSE) |>
-    filter(partition %in% c('shared', 'bluejay', 'gpu')) |>
+#   Check how busy the cluster is for the partitions you're able to access
+part_df = partition_info(partition = NULL, all_nodes = FALSE) |>
+    filter(partition %in% c('shared', 'bluejay', 'gpu'))
+print(part_df)
+
+#   Summarize the proportion of free resources across all 3 partitions
+part_df = part_df |>
     summarize(
         prop_free_cpus = sum(free_cpus) / sum(total_cpus),
         prop_free_mem_gb = sum(free_mem_gb) / sum(total_mem_gb)
@@ -41,7 +43,6 @@ job_info(user = NULL, partition = NULL) |>
     anonymize(c("user", "partition", "name")) |>
     print()
 
-
 #   How many CPUs and how much memory am I using total right now?
 job_info(partition = NULL) |>
     summarize(
@@ -50,7 +51,8 @@ job_info(partition = NULL) |>
     ) |>
     print()
 
-#   How many CPUs and how much memory are others using right now?
+#   How many CPUs and how much memory are others using on the shared partition
+#   right now?
 job_df = job_info(user = NULL) |>
     anonymize("user") |>
     group_by(user) |> 

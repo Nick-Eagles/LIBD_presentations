@@ -14,7 +14,7 @@ remotes::install_github("LieberInstitute/slurmjobs")
 
 #   Install some packages we'll use today
 BiocManager::install('spatialLIBD')
-remotes::install_cran(c('here', 'withr'))
+remotes::install_cran(c('here', 'withr', 'dplyr'))
 ```
 
 ## Demo
