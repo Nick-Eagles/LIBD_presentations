@@ -28,6 +28,10 @@ srun --pty -c 4 --mem=5G --x11 -t 08:00:00 bash
 
 ## Intro to `BiocParallel`
 
+[`BiocParallel`](https://bioconductor.org/packages/release/bioc/html/BiocParallel.html) is a
+[Bioconductor](https://bioconductor.org/) R package that makes parallel computation across
+several available CPUs straightforward. It can be installed through `BiocManager`:
+
 ```{r "install", eval = FALSE}
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
     install.packages("BiocManager")
@@ -36,17 +40,31 @@ if (!requireNamespace("BiocManager", quietly = TRUE)) {
 BiocManager::install("BiocParallel")
 ```
 
+## Automatic number-of-cores detection
+
+First, it's useful to automatically determine the number of cores available to R, and
+define this at the top of our script rather than hardcode it potentially in multiple locations.
+Can't `BiocParallel` do this for us? On many computers, yes, but on many computing clusters
+(including JHPCE), automatic core detection is buggy, and R will believe is has access to
+all cores present on the entire compute node:
+
 ```{r "setup"}
-library(BiocParallel)
+parallel::detectCores()
 ```
 
-[`BiocParallel`](https://bioconductor.org/packages/release/bioc/html/BiocParallel.html) is a
-[Bioconductor](https://bioconductor.org/) R package that makes parallel computation across
-several available CPUs straightforward. Today, we'll use the `bplapply` function, which is
-invoked identically to base R's `lapply`, except for the addition of a `BPPPARAM` parameter
-specifying how many cores to use.
+Instead, we'll read in the `SLURM_CPUS_PER_TASK` environment variable, which always holds
+the value we specified earlier with `srun -c 4`.
+
+```{r "setup"}
+library(BiocParallel)
+num_cores = as.integer(Sys.getenv('SLURM_CPUS_PER_TASK'))
+```
 
 ## `bplapply`: basic usage
+
+With things set up, we'll specifically dive into the `bplapply` function, which is
+invoked identically to base R's `lapply`, except for the addition of a `BPPPARAM` parameter
+specifying how many cores to use.
 
 We'll start with a simple example to demonstrate the usage of `bplapply`: taking the square
 of a list of numbers using 4 cores. While useful as an example, exponentiation is already
@@ -71,6 +89,37 @@ generally recommended on Linux-like operating systems (including at JHPCE) becau
 forked processes and shared memory (meaning low overhead in many situations!).
 
 ```{r "something"}
+squared_nums = bplapply(nums_to_square, square, BPPARAM = MulticoreParam(num_cores))
+head(squared_nums, n = 3)
+```
+
+## `bplapply`: quantifying overhead
+
+While `MulticoreParam` is quite efficient in many situations, all parallel computations
+involve some "overhead": it takes time to for R to communicate what work each CPU core should
+do, and receive a computation's results from each worker. While we won't cover this today,
+note that overhead can get worse when a central object is being modified by multiple workers, and
+changes must be copied between different workers. In any case, the takeaway is that adding more
+cores isn't always the right choice to make a job faster.
+
+Let's do a small experiment to measure how number of cores influences the speed of our
+computation. Predicting this relationship isn't always easy, so measuring it can be useful.
+
+```{r "something"}
+time_df = tibble(
+    n_cores = 1:num_cores,
+    elapsed_time = 0 # will be overwritten with actual times
+)
+
+for (this_num_cores in time_df$n_cores) {
+    time_df[this_num_cores, 'elapsed_time'] = system.time(
+        temp_result = bplapply(
+            nums_to_square,
+            square,
+            BPPARAM = MulticoreParam(this_num_cores)
+        )
+    )[3]
+}
 squared_nums = bplapply(nums_to_square, square, BPPARAM = MulticoreParam(4))
 head(squared_nums, n = 3)
 ```
