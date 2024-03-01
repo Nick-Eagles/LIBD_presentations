@@ -1,0 +1,76 @@
+---
+title: "Measuring Runtime vs Cores with BiocParallel"
+author: 
+  - name: Nicholas J. Eagles
+    email: nickeagles77@gmail.com
+output: 
+  BiocStyle::html_document:
+    self_contained: yes
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    code_folding: show
+date: "`r doc_date()`"
+---
+
+# Multiple cores at JHPCE
+
+While SLURM provides a few different ways to request multiple resource (e.g. nodes, cores, or
+tasks), JHPCE admins advise using the `-c`/ `--cpus-per-task` argument to `srun` or `sbatch`
+to request multiple CPU cores. Here we'll request an interactive session with 4 cores using
+`-c 4`.
+
+```{bash "interactive_session"}
+srun --pty -c 4 --mem=5G --x11 -t 08:00:00 bash
+```
+
+# Multiple cores in R with `BiocParallel`
+
+## Intro to `BiocParallel`
+
+```{r "install", eval = FALSE}
+if (!requireNamespace("BiocManager", quietly = TRUE)) {
+    install.packages("BiocManager")
+}
+
+BiocManager::install("BiocParallel")
+```
+
+```{r "setup"}
+library(BiocParallel)
+```
+
+[`BiocParallel`](https://bioconductor.org/packages/release/bioc/html/BiocParallel.html) is a
+[Bioconductor](https://bioconductor.org/) R package that makes parallel computation across
+several available CPUs straightforward. Today, we'll use the `bplapply` function, which is
+invoked identically to base R's `lapply`, except for the addition of a `BPPPARAM` parameter
+specifying how many cores to use.
+
+## `bplapply`: basic usage
+
+We'll start with a simple example to demonstrate the usage of `bplapply`: taking the square
+of a list of numbers using 4 cores. While useful as an example, exponentiation is already
+vectorized, and the operation is typically so fast that parallelism's speed increase is
+arguably not worth the slight decrease in code clarity. TL;DR: just do `x**2` normally here,
+but this is how it's done with `bplapply`:
+
+We'll define a function `square()`, simply taking the square of an input numeric vector.
+Let's say we want to square the numbers 1 through 1000. Like `lapply`, `bplapply` expects
+a list as input (hence the `as.list` below), not a numeric vector.
+
+```{r "something"}
+square = function(x) x**2
+
+nums_to_square = as.list(1:1000)
+head(nums_to_square, n = 3)
+```
+
+To run in parallel, we'll call `bplapply` just like `lapply`, but adding
+`BPPARAM = MulticoreParam(4)`. `BiocParallel` offers many backends, but `MulticoreParam` is
+generally recommended on Linux-like operating systems (including at JHPCE) because it uses
+forked processes and shared memory (meaning low overhead in many situations!).
+
+```{r "something"}
+squared_nums = bplapply(nums_to_square, square, BPPARAM = MulticoreParam(4))
+head(squared_nums, n = 3)
+```
