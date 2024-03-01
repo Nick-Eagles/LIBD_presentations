@@ -57,6 +57,7 @@ the value we specified earlier with `srun -c 4`.
 
 ```{r "setup"}
 library(BiocParallel)
+library(tidyverse)
 num_cores = as.integer(Sys.getenv('SLURM_CPUS_PER_TASK'))
 ```
 
@@ -68,18 +69,18 @@ specifying how many cores to use.
 
 We'll start with a simple example to demonstrate the usage of `bplapply`: taking the square
 of a list of numbers using 4 cores. While useful as an example, exponentiation is already
-vectorized, and the operation is typically so fast that parallelism's speed increase is
-arguably not worth the slight decrease in code clarity. TL;DR: just do `x**2` normally here,
+vectorized, and the operation is typically so fast that parallelism introduces more overhead
+than the additional cores help with speed! TL;DR: normally just do `x**2` here,
 but this is how it's done with `bplapply`:
 
 We'll define a function `square()`, simply taking the square of an input numeric vector.
-Let's say we want to square the numbers 1 through 1000. Like `lapply`, `bplapply` expects
+Let's say we want to square the numbers 1 through 10000. Like `lapply`, `bplapply` expects
 a list as input (hence the `as.list` below), not a numeric vector.
 
 ```{r "something"}
 square = function(x) x**2
 
-nums_to_square = as.list(1:1000)
+nums_to_square = as.list(1:10000)
 head(nums_to_square, n = 3)
 ```
 
@@ -104,6 +105,7 @@ cores isn't always the right choice to make a job faster.
 
 Let's do a small experiment to measure how number of cores influences the speed of our
 computation. Predicting this relationship isn't always easy, so measuring it can be useful.
+We'll do the previous task and time it for different numbers of cores: 1 through 8.
 
 ```{r "something"}
 time_df = tibble(
@@ -113,13 +115,98 @@ time_df = tibble(
 
 for (this_num_cores in time_df$n_cores) {
     time_df[this_num_cores, 'elapsed_time'] = system.time(
-        temp_result = bplapply(
-            nums_to_square,
-            square,
-            BPPARAM = MulticoreParam(this_num_cores)
-        )
-    )[3]
+        {
+            temp_result = bplapply(
+                nums_to_square,
+                square,
+                BPPARAM = MulticoreParam(this_num_cores)
+            )
+        }
+    )[3] # the third value is elapsed / "wall clock" time
 }
-squared_nums = bplapply(nums_to_square, square, BPPARAM = MulticoreParam(4))
-head(squared_nums, n = 3)
+```
+
+With `ggplot2` the general relationship can be sketched out. Note that we measured elapsed time,
+which is likely responsible for most of the noise seen in the plot. Using more cores helps a
+little, but using 8 cores is nowhere near 8 times faster than using 1 core!
+
+```{r "something"}
+ggplot(time_df) +
+    geom_point(aes(x = n_cores, y = elapsed_time)) +
+    coord_cartesian(ylim = c(0, max(time_df$elapsed_time)))
+```
+
+## `bplapply`: full example
+
+Here, we'll do a complete example of an analysis using `bplapply`. We'll use
+spatial transcriptomics data of the human dorsolateral prefrontal cortex, collected
+with the Visium Spatial Proteogenomics platform, as made available through the
+`spatialLIBD` R package. We'll use `nnSVG` to find spatially variable genes. Since
+we're working with a dataset consisting of the same brain region repeated across
+many donors, the natural unit of parallelism will be the donor. In other words,
+we're repeating the same analysis (using `nnSVG`) for several donors independently;
+each of these donors can be processed in parallel. Let's grab the data and show
+that we have 4 donors:
+
+```{r "something"}
+library(spatialLIBD)
+spe = fetch_data(type = "spatialDLPFC_Visium_SPG")
+unique(spe$sample_id)
+```
+
+Since `bplapply` must iterate over a function, we'll define the `nnSVG` workflow
+as a function. It takes a `SpatialExperiment` object "spe" and the ID for one
+donor "sample_id". The order of parameters here is important: the first parameter
+must be the variable over which we're iterating.
+
+```{r "something"}
+run_nnSVG = function(sample_id, spe) {
+    spe <- spe[, spe$sample_id == sample_id]
+
+    #---------------------------------------------------------------------------
+    #   Filter lowly expressed and mitochondrial genes, and take spots with at
+    #   least some nonzero counts
+    #---------------------------------------------------------------------------
+
+    message(Sys.time(), " | Filtering genes and spots")
+    spe <- filter_genes(
+        spe,
+        filter_genes_ncounts = 3,
+        filter_genes_pcspots = 0.5,
+        filter_mito = TRUE
+    )
+    spe <- spe[rowSums(assays(spe)$counts) > 0, colSums(assays(spe)$counts) > 0]
+    message("Dimensions of spe after filtering:")
+    print(dim(spe))
+
+    #---------------------------------------------------------------------------
+    #   Recompute logcounts (library-size normalization as recommended in
+    #   https://bioconductor.org/packages/release/bioc/vignettes/nnSVG/inst/doc/nnSVG.html)
+    #---------------------------------------------------------------------------
+
+    message(Sys.time(), " | Re-computing logcounts")
+    spe <- computeLibraryFactors(spe)
+    spe <- logNormCounts(spe)
+
+    #---------------------------------------------------------------------------
+    #   Run nnSVG
+    #---------------------------------------------------------------------------
+
+    spe <- nnSVG(spe)
+
+    return(spe)
+}
+```
+
+Finally, we can run `nnSVG` on all 4 donors in parallel and retrieve a list of `SpatialExperiment`
+objects as output.
+
+```{r "something"}
+spe_list_out = bplapply(
+    unique(spe$sample_id),
+    run_nnSVG,
+    BPPARAM = MulticoreParam(num_cores),
+    #   Additional arguments to the 'run_nnSVG' function
+    spe = spe
+)
 ```
