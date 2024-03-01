@@ -20,7 +20,7 @@ tasks), JHPCE admins advise using the `-c`/ `--cpus-per-task` argument to `srun`
 to request multiple CPU cores. Here we'll request an interactive session with 4 cores using
 `-c 4`.
 
-```{bash "interactive_session"}
+```{bash "interactive_session", eval = FALSE}
 srun --pty -c 4 --mem=5G --x11 -t 08:00:00 bash
 ```
 
@@ -48,16 +48,20 @@ Can't `BiocParallel` do this for us? On many computers, yes, but on many computi
 (including JHPCE), automatic core detection is buggy, and R will believe is has access to
 all cores present on the entire compute node:
 
-```{r "setup"}
+```{r "detect_cores"}
 parallel::detectCores()
 ```
 
 Instead, we'll read in the `SLURM_CPUS_PER_TASK` environment variable, which always holds
 the value we specified earlier with `srun -c 4`.
 
-```{r "setup"}
+```{r "libraries"}
 library(BiocParallel)
 library(tidyverse)
+library(spatialLIBD)
+```
+
+```{r "auto_cores"}
 num_cores = as.integer(Sys.getenv('SLURM_CPUS_PER_TASK'))
 ```
 
@@ -77,7 +81,7 @@ We'll define a function `square()`, simply taking the square of an input numeric
 Let's say we want to square the numbers 1 through 10000. Like `lapply`, `bplapply` expects
 a list as input (hence the `as.list` below), not a numeric vector.
 
-```{r "something"}
+```{r "square_inputs"}
 square = function(x) x**2
 
 nums_to_square = as.list(1:10000)
@@ -89,7 +93,7 @@ To run in parallel, we'll call `bplapply` just like `lapply`, but adding
 generally recommended on Linux-like operating systems (including at JHPCE) because it uses
 forked processes and shared memory (meaning low overhead in many situations!).
 
-```{r "something"}
+```{r "square_outputs"}
 squared_nums = bplapply(nums_to_square, square, BPPARAM = MulticoreParam(num_cores))
 head(squared_nums, n = 3)
 ```
@@ -107,7 +111,7 @@ Let's do a small experiment to measure how number of cores influences the speed 
 computation. Predicting this relationship isn't always easy, so measuring it can be useful.
 We'll do the previous task and time it for different numbers of cores: 1 through 8.
 
-```{r "something"}
+```{r "time_squaring"}
 time_df = tibble(
     n_cores = 1:num_cores,
     elapsed_time = 0 # will be overwritten with actual times
@@ -130,7 +134,7 @@ With `ggplot2` the general relationship can be sketched out. Note that we measur
 which is likely responsible for most of the noise seen in the plot. Using more cores helps a
 little, but using 8 cores is nowhere near 8 times faster than using 1 core!
 
-```{r "something"}
+```{r "plot_times"}
 ggplot(time_df) +
     geom_point(aes(x = n_cores, y = elapsed_time)) +
     coord_cartesian(ylim = c(0, max(time_df$elapsed_time)))
@@ -148,7 +152,7 @@ we're repeating the same analysis (using `nnSVG`) for several donors independent
 each of these donors can be processed in parallel. Let's grab the data and show
 that we have 4 donors:
 
-```{r "something"}
+```{r "pull_spe"}
 library(spatialLIBD)
 spe = fetch_data(type = "spatialDLPFC_Visium_SPG")
 unique(spe$sample_id)
@@ -159,7 +163,7 @@ as a function. It takes a `SpatialExperiment` object "spe" and the ID for one
 donor "sample_id". The order of parameters here is important: the first parameter
 must be the variable over which we're iterating.
 
-```{r "something"}
+```{r "nnSVG_function"}
 run_nnSVG = function(sample_id, spe) {
     spe <- spe[, spe$sample_id == sample_id]
 
@@ -201,7 +205,7 @@ run_nnSVG = function(sample_id, spe) {
 Finally, we can run `nnSVG` on all 4 donors in parallel and retrieve a list of `SpatialExperiment`
 objects as output.
 
-```{r "something"}
+```{r "run_nnSVG"}
 spe_list_out = bplapply(
     unique(spe$sample_id),
     run_nnSVG,
