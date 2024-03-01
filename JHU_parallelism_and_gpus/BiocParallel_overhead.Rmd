@@ -214,3 +214,43 @@ spe_list_out = bplapply(
     spe = spe
 )
 ```
+
+# Parallelism by array job
+
+The above example with `nnSVG` was an example of an *embarassingly parallel* task:
+parallelism could be introduced simply be dividing up the data and processing as
+independent units; no additional sophisticated code was needed to produce a parallel
+workflow.
+
+For embarassingly parallel tasks, I almost always use [*array jobs*](https://slurm.schedmd.com/job_array.html)
+instead of `BiocParallel`. Array jobs are a SLURM feature that allows the same shell script
+to be executed as a series of separate *jobs*, called *tasks*. An environment variable
+called "SLURM_ARRAY_TASK_ID" is available to each task, and can be used to differentiate
+how each task behaves. Typically, I will use each task to process a separate unit of data,
+just as we processed donors as separate units with `BiocParallel` for `nnSVG` earlier.
+
+What makes an array job preferable to `BiocParallel`?
+
+- **Trivial re-execution of failed tasks**: When many units of data are processed in parallel,
+it's common for some units to have issues and others to complete successfully. `slurmjobs::array_submit`
+makes re-execution of failed jobs simple, whereas all tasks would have to be re-executed using
+`BiocParallel` if even one fails!
+- **Reduced overhead**: Since array tasks are independent jobs, no computational time is spent
+on sending instructions or data to, from, or between workers. This typically means that an
+array job with N tasks will complete almost N times faster than its non-parallel, full-dataset
+counterpart.
+- **Independent use of resources**: When one task in an array completes, its associated CPU(s)
+and memory are freed, resulting in efficient use of resources. In contrast, parallel work
+in R reserves memory and CPUs until all tasks are complete.
+- **Simpler logging**: While `BiocParallel` does have ways of coherently producing logs for
+parallel tasks, it's more difficult than array jobs, where simply putting `%s` somewhere in
+the log name produces clean, separate logs in real time for all array tasks.
+
+Is there ever a case where `BiocParallel` is better?
+
+- **Parallel tasks that depend on or must communicate with eachother**
+- **Work with relatively fast, repetitive tasks**: Suppose we had a problem where it
+took 15 minutes to load and preprocess the data, and 1000 units of data that could be 
+independently processed in 3 seconds each. An array job would involve loading the data
+1000 times, only to compute results for 3 seconds afterward. With `BiocParallel`, the
+data could be loaded once, and only the faster, repeated portion could be parallelized.
