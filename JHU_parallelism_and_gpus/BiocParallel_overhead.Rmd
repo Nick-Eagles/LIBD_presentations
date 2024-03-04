@@ -175,7 +175,7 @@ as a function. It takes a `SpatialExperiment` object "spe" and the ID for one
 donor "sample_id". The order of parameters here is important: the first parameter
 must be the variable over which we're iterating.
 
-```{r "nnSVG_function"}
+```{r "nnSVG_function", eval = FALSE}
 run_nnSVG = function(sample_id, spe) {
     spe <- spe[, spe$sample_id == sample_id]
 
@@ -217,7 +217,7 @@ run_nnSVG = function(sample_id, spe) {
 Finally, we can run `nnSVG` on all 4 donors in parallel and retrieve a list of `SpatialExperiment`
 objects as output.
 
-```{r "run_nnSVG"}
+```{r "run_nnSVG", eval = FALSE}
 spe_list_out = bplapply(
     unique(spe$sample_id),
     run_nnSVG,
