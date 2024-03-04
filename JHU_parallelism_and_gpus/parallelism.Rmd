@@ -1,5 +1,5 @@
 ---
-title: "Measuring Runtime vs Cores with BiocParallel"
+title: "Parallelism: BiocParallel And Array Jobs"
 author: 
   - name: Nicholas J. Eagles
     email: nickeagles77@gmail.com
