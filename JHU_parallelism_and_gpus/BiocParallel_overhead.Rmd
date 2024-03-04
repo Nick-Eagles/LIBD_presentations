@@ -31,7 +31,9 @@ srun --pty -c 8 --mem=5G --x11 -t 08:00:00 bash
 [`BiocParallel`](https://bioconductor.org/packages/release/bioc/html/BiocParallel.html) is a
 [Bioconductor](https://bioconductor.org/) R package that makes parallel computation across
 several available CPUs straightforward. We'll also make use of other GitHub, CRAN, and
-Bioconductor packages:
+Bioconductor packages.
+
+These can be installed if necessary:
 
 ```{r "install", eval = FALSE}
 #   GitHub package
@@ -51,7 +53,9 @@ for (p in pkgs) {
 }
 ```
 
-```{r "libraries"}
+Then the packages can be loaded:
+
+```{r "libraries", message = FALSE}
 library(BiocParallel)
 library(tidyverse)
 library(spatialLIBD)
@@ -108,7 +112,9 @@ generally recommended on Linux-like operating systems (including at JHPCE) becau
 forked processes and shared memory (meaning low overhead in many situations!).
 
 ```{r "square_outputs"}
-squared_nums = bplapply(nums_to_square, square, BPPARAM = MulticoreParam(num_cores))
+squared_nums = bplapply(
+    nums_to_square, square, BPPARAM = MulticoreParam(num_cores)
+)
 head(squared_nums, n = 3)
 ```
 
@@ -166,8 +172,11 @@ we're repeating the same analysis (using `nnSVG`) for several donors independent
 each of these donors can be processed in parallel. Let's grab the data and show
 that we have 4 donors:
 
-```{r "pull_spe"}
+```{r "pull_spe", message = FALSE}
 spe = fetch_data(type = "spatialDLPFC_Visium_SPG")
+```
+
+```{r "spe_samples"}
 unique(spe$sample_id)
 ```
 
@@ -295,8 +304,20 @@ if you get to the situation where this feels necessary, generally finding smalle
 data to loop over with just an array job is a simpler solution (and better, for the reasons
 I outlined above when comparing array jobs with `BiocParallel`).
 
-```{r "array_shell_script"}
+`job_single` by default prints the script it will create:
+
+```{r "array_shell_script_print"}
 job_single(
-    name = "nnSVG_array", memory = "20G", cores = 1, task_num = 4
+    name = "nnSVG_array", memory = "20G", cores = 1, task_num = 4,
+    create_logdir = FALSE
+)
+```
+
+We'll re-run with `create_shell = TRUE` to write to disk this time:
+
+```{r "array_shell_script_save"}
+job_single(
+    name = "nnSVG_array", memory = "20G", cores = 1, task_num = 4,
+    create_logdir = FALSE, create_shell = TRUE
 )
 ```
