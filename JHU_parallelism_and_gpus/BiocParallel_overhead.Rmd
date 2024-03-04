@@ -17,11 +17,11 @@ date: "`r doc_date()`"
 
 While SLURM provides a few different ways to request multiple resource (e.g. nodes, cores, or
 tasks), JHPCE admins advise using the `-c`/ `--cpus-per-task` argument to `srun` or `sbatch`
-to request multiple CPU cores. Here we'll request an interactive session with 4 cores using
-`-c 4`.
+to request multiple CPU cores. Here we'll request an interactive session with 8 cores using
+`-c 8`.
 
 ```{bash "interactive_session", eval = FALSE}
-srun --pty -c 4 --mem=5G --x11 -t 08:00:00 bash
+srun --pty -c 8 --mem=5G --x11 -t 08:00:00 bash
 ```
 
 # Multiple cores in R with `BiocParallel`
@@ -72,10 +72,11 @@ parallel::detectCores()
 ```
 
 Instead, we'll read in the `SLURM_CPUS_PER_TASK` environment variable, which always holds
-the value we specified earlier with `srun -c 4`.
+the value we specified earlier with `srun -c 8`.
 
 ```{r "auto_cores"}
 num_cores = as.integer(Sys.getenv('SLURM_CPUS_PER_TASK'))
+print(num_cores)
 ```
 
 ## `bplapply`: basic usage
@@ -85,7 +86,7 @@ invoked identically to base R's `lapply`, except for the addition of a `BPPPARAM
 specifying how many cores to use.
 
 We'll start with a simple example to demonstrate the usage of `bplapply`: taking the square
-of a list of numbers using 4 cores. While useful as an example, exponentiation is already
+of a list of numbers using 8 cores. While useful as an example, exponentiation is already
 vectorized, and the operation is typically so fast that parallelism introduces more overhead
 than the additional cores help with speed! TL;DR: normally just do `x**2` here,
 but this is how it's done with `bplapply`:
@@ -102,7 +103,7 @@ head(nums_to_square, n = 3)
 ```
 
 To run in parallel, we'll call `bplapply` just like `lapply`, but adding
-`BPPARAM = MulticoreParam(4)`. `BiocParallel` offers many backends, but `MulticoreParam` is
+`BPPARAM = MulticoreParam(num_cores)`. `BiocParallel` offers many backends, but `MulticoreParam` is
 generally recommended on Linux-like operating systems (including at JHPCE) because it uses
 forked processes and shared memory (meaning low overhead in many situations!).
 
