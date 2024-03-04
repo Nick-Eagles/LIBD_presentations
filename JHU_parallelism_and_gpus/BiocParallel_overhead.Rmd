@@ -30,14 +30,33 @@ srun --pty -c 4 --mem=5G --x11 -t 08:00:00 bash
 
 [`BiocParallel`](https://bioconductor.org/packages/release/bioc/html/BiocParallel.html) is a
 [Bioconductor](https://bioconductor.org/) R package that makes parallel computation across
-several available CPUs straightforward. It can be installed through `BiocManager`:
+several available CPUs straightforward. We'll also make use of other GitHub, CRAN, and
+Bioconductor packages:
 
 ```{r "install", eval = FALSE}
+#   GitHub package
+remotes::install_github("LieberInstitute/slurmjobs")
+
+#   Pre-requisite for Bioconductor packages
 if (!requireNamespace("BiocManager", quietly = TRUE)) {
     install.packages("BiocManager")
 }
 
-BiocManager::install("BiocParallel")
+#   Install CRAN and Bioconductor packages
+pkgs = c("BiocParallel", "tidyverse", "spatialLIBD", "nnSVG")
+for (p in pkgs) {
+    if (!requireNamespace("BiocManager", quietly = TRUE)) {
+        BiocManager::install(p)
+    }
+}
+```
+
+```{r "libraries"}
+library(BiocParallel)
+library(tidyverse)
+library(spatialLIBD)
+library(nnSVG)
+library(slurmjobs)
 ```
 
 ## Automatic number-of-cores detection
@@ -54,12 +73,6 @@ parallel::detectCores()
 
 Instead, we'll read in the `SLURM_CPUS_PER_TASK` environment variable, which always holds
 the value we specified earlier with `srun -c 4`.
-
-```{r "libraries"}
-library(BiocParallel)
-library(tidyverse)
-library(spatialLIBD)
-```
 
 ```{r "auto_cores"}
 num_cores = as.integer(Sys.getenv('SLURM_CPUS_PER_TASK'))
@@ -153,7 +166,6 @@ each of these donors can be processed in parallel. Let's grab the data and show
 that we have 4 donors:
 
 ```{r "pull_spe"}
-library(spatialLIBD)
 spe = fetch_data(type = "spatialDLPFC_Visium_SPG")
 unique(spe$sample_id)
 ```
@@ -283,9 +295,6 @@ data to loop over with just an array job is a simpler solution (and better, for 
 I outlined above when comparing array jobs with `BiocParallel`).
 
 ```{r "array_shell_script"}
-remotes::install_github("LieberInstitute/slurmjobs")
-library(slurmjobs)
-
 job_single(
     name = "nnSVG_array", memory = "20G", cores = 1, task_num = 4
 )
