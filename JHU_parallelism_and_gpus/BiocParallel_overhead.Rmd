@@ -217,6 +217,8 @@ spe_list_out = bplapply(
 
 # Parallelism by array job
 
+## Theory: embarassingly parallel tasks
+
 The above example with `nnSVG` was an example of an *embarassingly parallel* task:
 parallelism could be introduced simply be dividing up the data and processing as
 independent units; no additional sophisticated code was needed to produce a parallel
@@ -228,6 +230,8 @@ to be executed as a series of separate *jobs*, called *tasks*. An environment va
 called "SLURM_ARRAY_TASK_ID" is available to each task, and can be used to differentiate
 how each task behaves. Typically, I will use each task to process a separate unit of data,
 just as we processed donors as separate units with `BiocParallel` for `nnSVG` earlier.
+
+## Theory: `BiocParallel` vs. array jobs
 
 What makes an array job preferable to `BiocParallel`?
 
@@ -243,7 +247,7 @@ counterpart.
 and memory are freed, resulting in efficient use of resources. In contrast, parallel work
 in R reserves memory and CPUs until all tasks are complete.
 - **Simpler logging**: While `BiocParallel` does have ways of coherently producing logs for
-parallel tasks, it's more difficult than array jobs, where simply putting `%s` somewhere in
+parallel tasks, it's more difficult than array jobs, whereas simply putting `%s` somewhere in
 the log name produces clean, separate logs in real time for all array tasks.
 
 Is there ever a case where `BiocParallel` is better?
@@ -254,3 +258,35 @@ took 15 minutes to load and preprocess the data, and 1000 units of data that cou
 independently processed in 3 seconds each. An array job would involve loading the data
 1000 times, only to compute results for 3 seconds afterward. With `BiocParallel`, the
 data could be loaded once, and only the faster, repeated portion could be parallelized.
+
+## Practice: creating the shell script
+
+To write the `nnSVG` example as an array job, (almost) the entire R script will be written
+to operate on one donor at a time, much like the `run_nnSVG` function over which `bplapply`
+was iterating in the `BiocParallel` example. There will be a couple more lines at the
+beginning dedicated to loading the full dataset and subsetting to one donor, depending on
+the array task ID.
+
+Array jobs are fundamentally shell scripts, and to construct the shell-script portion,
+we'll use [`job_single`](http://research.libd.org/slurmjobs/articles/slurmjobs.html#creating-shell-scripts-to-sbatch)
+from the [`slurmjobs`](http://research.libd.org/slurmjobs/) R package I built. This function
+is designed to reduce the need to memorize or repeatedly type SLURM-specific syntax; instead,
+a shell script is created by specifying key variables like memory, number of cores, and time
+limit. It also includes code to print helpful reproducibility information.
+
+Note how we specify 1 core below! This means each of the four array tasks will use one
+core-- this effectively means the dataset as a whole is still parallelized across four cores,
+just like our earlier `BiocParallel` example. While it's theoretically possible to specify
+more than one core and nest `BiocParallel` parallelism within an array job, I find that
+if you get to the situation where this feels necessary, generally finding smaller units of
+data to loop over with just an array job is a simpler solution (and better, for the reasons
+I outlined above when comparing array jobs with `BiocParallel`).
+
+```{r "array_shell_script"}
+remotes::install_github("LieberInstitute/slurmjobs")
+library(slurmjobs)
+
+job_single(
+    name = "nnSVG_array", memory = "20G", cores = 1, task_num = 4
+)
+```
