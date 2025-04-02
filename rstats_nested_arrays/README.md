@@ -60,3 +60,25 @@ In the inner loop, we [loop through 4 tasks](https://github.com/Nick-Eagles/LIBD
 representing data samples, with each task [invoking a Python script](https://github.com/Nick-Eagles/LIBD_presentations/blob/63dfd061a633b2155b7e445967717018766127e4/rstats_nested_arrays/nested_arrays/01_main.sh#L20). Inside [the Python script](https://github.com/Nick-Eagles/LIBD_presentations/blob/main/rstats_nested_arrays/nested_arrays/01_main.py),
 we access the task IDs for the inner and outer loops to determine the data
 sample and k value to use for (a hypothetical) k-means clustering analysis.
+
+#### Single-script loop with `slurmjobs::job_loop()`
+
+A more general approach that works with an arbitrary number of loops (our
+example has 2 loops) involves creating a job-submission script with
+`slurmjobs::job_loop()` in R. The following lines of code can be used to create
+a shell script and R script pair, operating as an array job over both samples
+and k values
+
+```{r}
+library(slurmjobs)
+
+job_loop(
+    name = '02_job_loop',
+    loops = list(
+        k = as.character(2:10), sample_id = c('A', 'B', 'C', 'D')
+    ),
+    memory = '2G',
+    create_shell = TRUE,
+    create_logdir = FALSE
+)
+```
