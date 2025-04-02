@@ -44,11 +44,19 @@ The above example (3-sample dataset with same processing) is the simplest case,
 where we're looping over one categorical variable. *Nesting* occurs when we want
 to loop over multiple categorical variables. For example, we may have a
 workflow where we wish to perform k-means clustering of each tissue sample at
-several values of k. I'll introduce two approaches to using array jobs for these
-sorts of scenarios.
+several values of k. I'll introduce two approaches to using array jobs for this
+scenario.
 
 #### Nested `sbatch` call
 
 One approach is to use an array job that submits another array job via `sbatch`.
 This concept is implemented in the `nested_arrays/01_main*` scripts. In an
-[outer loop]([here](https://github.com/Nick-Eagles/LIBD_presentations/blob/main/rstats_nested_arrays/nested_arrays/01_main_wrapper.sh)), 
+[outer loop]([here](https://github.com/Nick-Eagles/LIBD_presentations/blob/main/rstats_nested_arrays/nested_arrays/01_main_wrapper.sh)),
+we'll [loop through values of k](https://github.com/Nick-Eagles/LIBD_presentations/blob/63dfd061a633b2155b7e445967717018766127e4/rstats_nested_arrays/nested_arrays/01_main_wrapper.sh#L8)
+(2 through 10). The [log path for the inner loop](https://github.com/Nick-Eagles/LIBD_presentations/blob/63dfd061a633b2155b7e445967717018766127e4/rstats_nested_arrays/nested_arrays/01_main_wrapper.sh#L11)
+includes both the outer and inner (`%a`) task IDs to make each task have a
+unique log. Finally, [we submit the inner loop](https://github.com/Nick-Eagles/LIBD_presentations/blob/63dfd061a633b2155b7e445967717018766127e4/rstats_nested_arrays/nested_arrays/01_main_wrapper.sh#L12-L16).
+In the inner loop, we [loop through 4 tasks](https://github.com/Nick-Eagles/LIBD_presentations/blob/63dfd061a633b2155b7e445967717018766127e4/rstats_nested_arrays/nested_arrays/01_main.sh#L6),
+representing data samples, with each task [invoking a Python script](https://github.com/Nick-Eagles/LIBD_presentations/blob/63dfd061a633b2155b7e445967717018766127e4/rstats_nested_arrays/nested_arrays/01_main.sh#L20). Inside [the Python script](https://github.com/Nick-Eagles/LIBD_presentations/blob/main/rstats_nested_arrays/nested_arrays/01_main.py),
+we access the task IDs for the inner and outer loops to determine the data
+sample and k value to use for (a hypothetical) k-means clustering analysis.
