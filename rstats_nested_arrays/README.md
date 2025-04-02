@@ -67,7 +67,7 @@ A more general approach that works with an arbitrary number of loops (our
 example has 2 loops) involves creating a job-submission script with
 `slurmjobs::job_loop()` in R. The following lines of code can be used to create
 a shell script and R script pair, operating as an array job over both samples
-and k values
+and k values:
 
 ```{r}
 library(slurmjobs)
@@ -82,3 +82,8 @@ job_loop(
     create_logdir = FALSE
 )
 ```
+
+The general concept is that [a single array](https://github.com/Nick-Eagles/LIBD_presentations/blob/bb0a8e69c1a272157d1567991e2121228b5181b0/rstats_nested_arrays/nested_arrays/02_job_loop.sh#L10)
+loops over both categorical variables, with [modulus division being used to subset each variable](https://github.com/Nick-Eagles/LIBD_presentations/blob/bb0a8e69c1a272157d1567991e2121228b5181b0/rstats_nested_arrays/nested_arrays/02_job_loop.sh#L13-L14)
+for the given task ID. The [log path is also unique to the array task](https://github.com/Nick-Eagles/LIBD_presentations/blob/bb0a8e69c1a272157d1567991e2121228b5181b0/rstats_nested_arrays/nested_arrays/02_job_loop.sh#L20), and character variables are [directly passed to R](https://github.com/Nick-Eagles/LIBD_presentations/blob/bb0a8e69c1a272157d1567991e2121228b5181b0/rstats_nested_arrays/nested_arrays/02_job_loop.sh#L42),
+where we might perform clustering for each sample and k value.
