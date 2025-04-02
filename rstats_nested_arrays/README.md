@@ -37,3 +37,18 @@ holds a value of either `1`, `2`, or `3`, depending on the task. Continuing this
 3-sample example, we can leverage this environment variable to
 [subset samples of our dataset](https://github.com/LieberInstitute/visiumStitched_brain/blob/7cef43fe3894c532b39cace2fd2b84011f0c0044/code/03_stitching/03_nnSVG_unstitched.R#L13-L15)
 in R so that each sample gets processed through the workflow.
+
+### Nesting
+
+The above example (3-sample dataset with same processing) is the simplest case,
+where we're looping over one categorical variable. *Nesting* occurs when we want
+to loop over multiple categorical variables. For example, we may have a
+workflow where we wish to perform k-means clustering of each tissue sample at
+several values of k. I'll introduce two approaches to using array jobs for these
+sorts of scenarios.
+
+#### Nested `sbatch` call
+
+One approach is to use an array job that submits another array job via `sbatch`.
+This concept is implemented in the `nested_arrays/01_main*` scripts. In an
+[outer loop]([here](https://github.com/Nick-Eagles/LIBD_presentations/blob/main/rstats_nested_arrays/nested_arrays/01_main_wrapper.sh)), 
