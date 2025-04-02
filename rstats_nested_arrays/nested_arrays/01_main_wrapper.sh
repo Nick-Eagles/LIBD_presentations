@@ -7,10 +7,10 @@
 #SBATCH -e /dev/null
 #SBATCH --array=2-10%2
 
-export OUTER_TASK=$SLURM_ARRAY_TASK_ID
-log_path=logs/01_main_k${OUTER_TASK}_sample%a.txt
+export OUTER_TASK_ID=$SLURM_ARRAY_TASK_ID
+log_path=logs/01_main_k${OUTER_TASK_ID}_sample%a.txt
 sbatch \
-    --export=ALL,OUTER_TASK \
+    --export=ALL,OUTER_TASK_ID \
     -o $log_path \
     -e $log_path \
     01_main.sh
