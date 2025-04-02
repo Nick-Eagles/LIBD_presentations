@@ -18,3 +18,22 @@ package when creating some nested array jobs. It's available from GitHub:
 #   Install slurmjobs
 remotes::install_github("LieberInstitute/slurmjobs")
 ```
+
+## Nested array jobs
+
+### Basic array jobs
+
+First, we'll introduce the concept of an [array job with the SLURM job scheduler](https://slurm.schedmd.com/job_array.html).
+In my opinion, array jobs are one of the most natural ways you can express a
+data analysis task when multiple elements of data must undergo the same
+processing. In genomics, one example would be finding spatially variable genes
+for each tissue sample. With SLURM, a 3-sample dataset would turn into a 3-task
+array job, with each sample being processed in parallel. To turn an ordinary
+shell script into an array job, just add `#SBATCH --array=1-3%3` like
+in [this example](https://github.com/LieberInstitute/visiumStitched_brain/blob/7cef43fe3894c532b39cace2fd2b84011f0c0044/code/03_stitching/03_nnSVG_unstitched.sh#L7).
+In this case, the shell script executes 3 tasks in parallel. The only difference
+between these tasks is the `SLURM_ARRAY_TASK_ID` environment variable, which
+holds a value of either `1`, `2`, or `3`, depending on the task. Continuing this
+3-sample example, we can leverage this environment variable to
+[subset samples of our dataset](https://github.com/LieberInstitute/visiumStitched_brain/blob/7cef43fe3894c532b39cace2fd2b84011f0c0044/code/03_stitching/03_nnSVG_unstitched.R#L13-L15)
+in R so that each sample gets processed through the workflow.
