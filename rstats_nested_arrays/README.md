@@ -1,4 +1,4 @@
-# R Stats Club: nested array jobs and SLURM job dependencies (2025-04-04)
+# R Stats Club: nested array jobs and `run_all.sh` scripts (2025-04-04)
 
 In this [R Stats Club](https://research.libd.org/rstatsclub/) session, I'll
 cover two general topics:
@@ -87,3 +87,51 @@ The general concept is that [a single array](https://github.com/Nick-Eagles/LIBD
 loops over both categorical variables, with [modulus division being used to subset each variable](https://github.com/Nick-Eagles/LIBD_presentations/blob/bb0a8e69c1a272157d1567991e2121228b5181b0/rstats_nested_arrays/nested_arrays/02_job_loop.sh#L13-L14)
 for the given task ID. The [log path is also unique to the array task](https://github.com/Nick-Eagles/LIBD_presentations/blob/bb0a8e69c1a272157d1567991e2121228b5181b0/rstats_nested_arrays/nested_arrays/02_job_loop.sh#L20), and character variables are [directly passed to R](https://github.com/Nick-Eagles/LIBD_presentations/blob/bb0a8e69c1a272157d1567991e2121228b5181b0/rstats_nested_arrays/nested_arrays/02_job_loop.sh#L42),
 where we might perform clustering for each sample and k value.
+
+#### Comparison of options
+
+Each of the above approaches has potential advantages over the other, which I'll
+summarize in the below table.
+
+| Topic | Nested `sbatch` | `job_loop()` |
+| ---- | ------- | ------- |
+| Script readability | More readable when number of tasks is large | Less readable when number of tasks is large |
+| Modularity of tasks | Easier to execute a subset of tasks | More complicated to execute a subset of tasks |
+| Number of scripts required | 2 | 1 |
+| Number of possible loops | Exactly 2 | Any positive integer |
+
+##  `run_all.sh` scripts
+
+In the next topic, we'll cover the concept of a `run_all.sh` script. On the data
+science team at LIBD, we contribute to many projects, each associated with a git
+repository containing many analysis scripts. A `run_all.sh` script is a shell
+script, often associated with an entire project/repository, which sequentially
+submits every analysis step as a SLURM job. It has a couple important functions:
+
+- Serves as documentation for how an analysis was done for a project
+- Allows automated, hands-off resubmission of a series of analysis steps when data or goals change
+
+LIBD has a template git repository demonstrating an example
+[`run_all.sh` script](https://github.com/LieberInstitute/template_project/blob/devel/code/run_all.sh),
+which shows can a series of SLURM jobs can be connected via job dependencies. A
+job ID associated with one analysis step [can be extracted](https://github.com/LieberInstitute/template_project/blob/44e939c13b1bd49f5ea7daf85ab5d0555f7f0062/code/run_all.sh#L41)
+and [used as a condition for a second job starting](https://github.com/LieberInstitute/template_project/blob/44e939c13b1bd49f5ea7daf85ab5d0555f7f0062/code/run_all.sh#L46):
+the second job executes as soon as the first succeeds (i.e. returns an exit code
+of 0).
+
+### For complex projects
+
+In a project with a complex analysis workflow, organizing a `run_all.sh` script
+(which is inherently sequential) can be challenging, but I have some
+recommended strategies for making it manageable.
+
+Often, analyses cannot be expressed sequentially or linearly; in general, a
+workflow (usually) can be mathematically described as a directed acyclic graph
+(DAG), where vertices are analysis steps and edges represent flow of data. I
+recommend thinking about your project from a high level, and trying to summarize
+the full analysis into major conceptual units. For example, maybe you could
+describe your analysis as consisting of data preparation, quality control, and
+clustering (even though it consists of far more than just three scripts). Next,
+try to draw a diagram of this workflow in terms of the high-level steps,
+considering which steps depend on others. In the below graph, I've described my
+project in terms of 5 such steps.
