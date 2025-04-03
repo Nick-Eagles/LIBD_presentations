@@ -135,3 +135,27 @@ clustering (even though it consists of far more than just three scripts). Next,
 try to draw a diagram of this workflow in terms of the high-level steps,
 considering which steps depend on others. In the below graph, I've described my
 project in terms of 5 such steps.
+
+![High-level workflow](workflow.png)
+
+If the graph is particularly complicated, it's worth considering a workflow
+management tool like [Nextflow](https://www.nextflow.io/) or [Snakemake](https://snakemake.readthedocs.io/en/stable/),
+options that are better suited to complex workflows than what's possible with SLURM job
+dependencies. Otherwise, the next step is to number each step, more or less
+going from left to right and top to bottom (though the exact order is
+unimportant). These numbers describe the order to place these steps in your
+`run_all.sh` script. Next, flesh out each section with the individual
+constituent scripts, using job dependencies to connect the sequence of smaller
+steps. I recommend using variables for each job ID that include the number of
+the high-level analysis step and the particular script for that step. For
+example:
+
+```bash
+#   Data preparation
+job_id_1_1=$(sbatch --parsable 01_preprocess_data.sh)
+job_id_1_2=$(sbatch --parsable --dependency=afterok:${job_id_1_1} 02_clean.sh)
+
+#   Quality control
+job_id_2_1=$(sbatch --parsable --dependency=afterok:${job_id_1_2} 01_explore_metrics.sh)
+job_id_2_2=$(sbatch --parsable --dependency=afterok:${job_id_2_1} 02_filter.sh)
+```
