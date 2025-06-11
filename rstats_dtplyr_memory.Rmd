@@ -86,3 +86,12 @@ a
 Another handy function is `setDT()`, which can take a data-frame-like object
 (e.g. a `tibble` or `data.frame`) and convert it to a `data.table` by reference.
 If you use `data.table()` to cast the starting object, it gets copied!
+
+## Introducing `dtplyr`
+
+`dtplyr` works by introducing a class informally called a "lazy data table".
+Code can be written with these `lazy_dt()` objects as if they were ordinary
+data tables, but any `dplyr` verbs are not actually executed until the object
+is converted to the ordinary type (e.g. `as.data.frame()` or `as_tibble()`).
+The code is executed as `data.table` code, often with performance gains relative
+to the written `dplyr` code.
