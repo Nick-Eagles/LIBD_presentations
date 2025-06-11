@@ -20,7 +20,7 @@ to how `dplyr` works. In particular, both protect the user from accidentally
 modifying an existing object during a series of modifications, often at the
 expense of memory efficiency.
 
-### R's default behavior: copy on modify
+### R's Default Behavior: Copy on Modify
 
 ```{r 'copy_on_modify'}
 library(tidyverse)
@@ -58,3 +58,31 @@ b = mutate(a, y = 4:6)
 
 Actually, every `dplyr` verb creates a copy of at least some of the starting
 data, even, for example, `select()`, `filter()`, and `arrange()`.
+
+### `data.table`'s Behavior (Certain Operations)
+
+In contrast, `data.table` tries to avoid data copies as much as possible and
+instead use references to the original object. Let's again consider the example
+of adding a column to an existing data frame:
+
+```{r 'data_table_mutate'}
+a = data.table(x = 1:3)
+
+#   Use the ':=' operator to add a column by reference. The existing data
+#   stays where it is (the 'x' column), and the new column 'y' is added to 'a'
+a[, y := 4:6]
+```
+
+Other examples of operations that modify a reference include functions that
+start with `set`. For example, `setnames()` changes colnames by reference
+(shockingly, `colnames<-` does not-- some underlying data is copied!):
+
+```{r 'data_table_setnames'}
+setnames(a, c("x_new", "y_new"))
+
+a
+```
+
+Another handy function is `setDT()`, which can take a data-frame-like object
+(e.g. a `tibble` or `data.frame`) and convert it to a `data.table` by reference.
+If you use `data.table()` to cast the starting object, it gets copied!
