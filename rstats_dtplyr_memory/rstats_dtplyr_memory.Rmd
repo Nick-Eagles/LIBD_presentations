@@ -1,4 +1,20 @@
-# Intro to `dtplyr`
+---
+title: "Introduction to dtplyr"
+author: 
+  - name: Nicholas J. Eagles
+output: 
+  BiocStyle::html_document:
+    self_contained: yes
+    toc: true
+    toc_float: true
+    toc_depth: 2
+    code_folding: show
+date: "`r doc_date()`"
+vignette: >
+  %\VignetteIndexEntry{Introduction to dtplyr}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}  
+---
 
 `dplyr` provides an excellent, expressive language for manipulating data frames
 in R. After a slight learning curve, it arguably produces more readable code
@@ -13,14 +29,14 @@ treated as a black box, I find that understanding the logic underlying memory
 allocation for various operations is useful to write the most performant code
 while avoiding unexpected behavior.
 
-## Understanding Memory Allocation in R
+# Understanding Memory Allocation in R
 
 First, let's talk about memory allocation in base R, which feels quite similar
 to how `dplyr` works. In particular, both protect the user from accidentally
 modifying an existing object during a series of modifications, often at the
 expense of memory efficiency.
 
-### R's Default Behavior: Copy on Modify
+## R's Default Behavior: Copy on Modify
 
 ```{r 'copy_on_modify'}
 library(dplyr)
@@ -44,7 +60,7 @@ a
 This behavior applies for almost all ordinary objects in base R, like vectors,
 lists, and data frames!
 
-### `dplyr`'s behavior
+## `dplyr`'s behavior
 
 Somewhat similarly, adding a column to a data frame with `dplyr` creates a full
 copy of the starting data frame before adding the new column:
@@ -59,7 +75,7 @@ b = mutate(a, y = 4:6)
 Actually, every `dplyr` verb creates a copy of at least some of the starting
 data, even, for example, `select()`, `filter()`, and `arrange()`.
 
-### `data.table`'s Behavior (Certain Operations)
+## `data.table`'s Behavior (Certain Operations)
 
 In contrast, `data.table` tries to avoid data copies as much as possible and
 instead use references to the original object. Let's again consider the example
@@ -87,7 +103,7 @@ Another handy function is `setDT()`, which can take a data-frame-like object
 (e.g. a `tibble` or `data.frame`) and convert it to a `data.table` by reference.
 If you use `data.table()` to cast the starting object, it gets copied!
 
-## Introducing `dtplyr`
+# Introducing `dtplyr`
 
 `dtplyr` works by introducing a class informally called a "lazy data table".
 Code can be written with these `lazy_dt()` objects as if they were ordinary
@@ -96,7 +112,7 @@ is converted to the ordinary type (e.g. `as.data.frame()` or `as_tibble()`).
 The code is executed as `data.table` code, often with performance gains relative
 to the written `dplyr` code.
 
-### Basic Example
+## Basic Example
 
 Let's grab a copy of `mtcars` and use a `lazy_dt()` to translate some `dplyr`
 operations into more efficient `data.table` code.
@@ -123,7 +139,7 @@ a = as_tibble(a)
 a
 ```
 
-### Efficiency Caveats
+## Efficiency Caveats
 
 `dtplyr` does not always perform the most efficient `data.table` translations of
 `dplyr` code. The major exception is that `dplyr::mutate()` still creates a copy
