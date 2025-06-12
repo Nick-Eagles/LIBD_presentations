@@ -23,7 +23,7 @@ expense of memory efficiency.
 ### R's Default Behavior: Copy on Modify
 
 ```{r 'copy_on_modify'}
-library(tidyverse)
+library(dplyr)
 library(data.table)
 library(dtplyr)
 
@@ -95,3 +95,58 @@ data tables, but any `dplyr` verbs are not actually executed until the object
 is converted to the ordinary type (e.g. `as.data.frame()` or `as_tibble()`).
 The code is executed as `data.table` code, often with performance gains relative
 to the written `dplyr` code.
+
+### Basic Example
+
+Let's grab a copy of `mtcars` and use a `lazy_dt()` to translate some `dplyr`
+operations into more efficient `data.table` code.
+
+```{r 'dtplyr_lazy_dt'}
+a = data.table(mtcars)
+
+#   Need to convert our input data to a lazy data table
+a = lazy_dt(a)
+
+#   Lazily track the following dplyr operations. They don't get performed yet!
+a = a |>
+    group_by(cyl) |>
+    summarize(mean_mpg = mean(mpg)) |>
+    arrange(cyl)
+
+#   We can check the data.table code that will be executed upon conversion to
+#   a tibble or similar
+show_query(a)
+
+#   Now perform the conversion, and execute the dplyr operations as data.table
+#   code
+a = as_tibble(a)
+a
+```
+
+### Efficiency Caveats
+
+`dtplyr` does not always perform the most efficient `data.table` translations of
+`dplyr` code. The major exception is that `dplyr::mutate()` still creates a copy
+of the starting data frame (by default) through `dtplyr`. This is intentional, as
+it ensures `dplyr` code in `dtplyr` behaves the same as usual.
+
+Let's turn this copying behavior off, with a warning about side effects:
+
+```{r 'dtplyr_mutate_no_copy'}
+a = data.table(mtcars)
+
+#   Explicitly specify that we're allowed to modify the original object
+b = lazy_dt(a, immutable = FALSE)
+
+#   Add some lazy operations
+b = b |>
+    mutate(new_col = "some_constant") |> # memory-efficient mutate
+    group_by(cyl) |>
+    summarize(mean_mpg = mean(mpg)) |>
+    arrange(cyl)
+
+b = as_tibble(b)
+
+#   But wait, 'a' has a new column 'new_col'
+head(a)
+```
