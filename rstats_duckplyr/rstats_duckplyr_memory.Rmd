@@ -1,0 +1,275 @@
+---
+title: "duckplyr: A trustworthy drop-in accelerator for dplyr workflows"
+author: "R Stats Club"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
+output:
+  html_document:
+    theme: readable
+    toc: true
+    toc_depth: 3
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+## Motivation and Goals
+
+- Explain what `duckplyr` is and how it integrates with `dplyr`.
+- Show how `library(duckplyr)` effectively changes `dplyr` behavior (without rewriting code).
+- Argue why `duckplyr` is more trustworthy than `dtplyr`, using a concrete join example.
+- Walk through a mini end-to-end workflow using `read_csv_duckdb()`.
+- Briefly introduce lazy execution, query optimization, and prudence.
+- Conclude with practical guidance on when to use `duckplyr`.
+
+We assume:
+
+- Some familiarity with `dplyr`.
+- Basic awareness of DuckDB (but not deep internals).
+
+## What Is duckplyr?
+
+`duckplyr` is an integration between DuckDB and `dplyr`.
+
+It lets you write ordinary `dplyr` pipelines while:
+
+- Building a lazy query plan.
+- Letting DuckDB optimize and execute the query.
+- Only materializing results into R when needed.
+
+This can lead to:
+
+- Faster execution.
+- Lower memory usage.
+- The ability to work directly on files (CSV / Parquet).
+
+## Attaching duckplyr: What Actually Changes
+
+```{r}
+library(tidyverse)
+library(duckplyr)
+```
+
+When you attach `duckplyr`, you'll see a startup message indicating that some `dplyr` methods are being overwritten.
+
+Conceptually:
+
+- You still call `left_join()`, `mutate()`, `summarise()`, etc.
+- `duckplyr` inserts itself so that supported verbs can be executed by DuckDB.
+- Unsupported operations fall back to `dplyr`.
+- Under the hood this uses S3 method dispatch and class-based behavior — it behaves like a drop-in replacement.
+
+## Restoring Original dplyr Behavior
+
+```{r}
+duckplyr::methods_restore()
+```
+
+## Fallback Behavior and Diagnostics
+
+`duckplyr` only runs code in DuckDB when it can do so safely. If a feature is unsupported, `duckplyr`:
+
+- Falls back to `dplyr`.
+- Can explicitly tell you why.
+
+Enable fallback diagnostics:
+
+```{r}
+duckplyr::fallback_config(info = TRUE)
+```
+
+This is critical for understanding what is (and is not) accelerated.
+
+## Why Trust duckplyr More Than dtplyr?
+
+In my experience, `dtplyr` has silently mistranslated `dplyr` code, whereas
+`duckplyr` seems to more carefully identify when an operation is not fully
+supported, and explicitly lets you know when this happens. In real code, I
+tried out a fairly obscure parameter `multiple = "any"` in `left_join()`;
+here we'll show how `duckplyr` handles this case compared to `dtplyr`.
+
+### Example: `left_join(multiple = "any")`
+
+Setup: two small tibbles.
+
+```{r}
+
+keys <- tibble(
+  key = c("A", "B", "C", "D")
+)
+
+anno <- tibble(
+  key = c("A","A","A","B","B","C","C","C","C"),
+  gene = c("G1","G2","G3","G4","G5","G6","G7","G8","G9"),
+  cluster = c(1,1,1,2,2,3,3,3,3)
+)
+
+keys
+anno
+```
+
+- `keys` has unique keys.
+- `anno` has multiple rows per key.
+- Each key maps to exactly one `cluster`.
+
+#### dplyr semantics (`multiple = "any"`)
+
+```{r}
+res_dplyr_any <- dplyr::left_join(
+  keys,
+  anno,
+  by = "key",
+  multiple = "any"
+)
+
+res_dplyr_any
+nrow(res_dplyr_any)
+```
+
+Expected behavior:
+
+- Exactly one row per key.
+- One arbitrary matching row chosen per key.
+- Total rows = `nrow(keys)`.
+
+#### dtplyr mistranslation
+
+```{r}
+library(dtplyr)
+
+lazy_keys <- lazy_dt(keys)
+lazy_anno <- lazy_dt(anno)
+
+res_dtplyr_any <- left_join(
+  lazy_keys,
+  lazy_anno,
+  by = "key",
+  multiple = "any"
+) |>
+  as_tibble()
+
+res_dtplyr_any
+nrow(res_dtplyr_any)
+```
+
+The logic behind `multiple = "any"` was completely ignored, and worse, the difference
+in behavior was silent. This particular example is still an open GitHub issue
+[here](https://github.com/tidyverse/dtplyr/issues/488).
+
+#### duckplyr: correct result with explicit fallback
+
+Ideally, make sure fallback diagnostics are enabled, then run the same join:
+
+```{r}
+duckplyr::fallback_config(info = TRUE)
+
+res_duckplyr_any <- left_join(
+  keys,
+  anno,
+  by = "key",
+  multiple = "any"
+)
+
+res_duckplyr_any
+nrow(res_duckplyr_any)
+```
+
+You should see a message like:
+
+```
+> Cannot process duckplyr query with DuckDB, falling back to dplyr.  
+> ℹ `multiple` not supported
+```
+
+## Mini End-to-End Workflow with `read_csv_duckdb()`
+
+As an example, we'll use a tiny dataset, but of course the real benefits come
+when working with much larger datasets.
+
+### Create a small CSV
+
+```{r}
+library(readr)
+
+tmp_csv <- tempfile(fileext = ".csv")
+
+demo_tbl <- tibble(
+  sample_id = rep(c("S1", "S2"), each = 6),
+  gene = rep(paste0("G", 1:6), times = 2),
+  count = c(10, 0, 3, 7, 1, 0, 4, 9, 0, 2, 8, 1),
+  cluster = rep(c("C1","C2","C3"), times = 4)
+)
+
+write_csv(demo_tbl, tmp_csv)
+tmp_csv
+```
+
+### Read lazily with duckplyr
+
+```{r}
+df <- read_csv_duckdb(tmp_csv)
+
+df
+class(df)
+```
+
+This does not eagerly read the entire CSV into R.
+
+### Run a dplyr pipeline
+
+```{r}
+pipeline <- df |>
+  filter(count > 0) |>
+  group_by(sample_id, cluster) |>
+  summarise(
+    n_genes = n(),
+    total = sum(count),
+    .groups = "drop"
+  ) |>
+  arrange(desc(total))
+
+pipeline
+```
+
+At this stage:
+
+- The computation is represented as a query plan.
+- DuckDB can optimize execution.
+
+### Explicitly materialize results
+
+```{r}
+result <- pipeline |> collect()
+result
+```
+
+This is where data is actually pulled into R and manipulated.
+
+## A Brief Note on Prudence
+
+Prudence controls how eagerly `duckplyr` materializes data into R.
+
+- `lavish`: behave more like a regular tibble.
+- `thrifty` / `stingy`: require more explicit `collect()`.
+
+To always get the expected behavior in `dplyr`, you'll have to explicitly request
+lavish prudence.
+
+```{r, eval = FALSE}
+df_big <- read_csv_duckdb("big.csv", prudence_level = "lavish")
+```
+
+Why this matters:
+
+- Automatic materialization can accidentally pull large data into memory.
+- Stricter prudence protects you, but feels less like base `dplyr`.
+- Choose based on data size and workflow.
+
+## Summary and Takeaways
+
+- `duckplyr` is designed as a drop-in accelerator for `dplyr` workflows.
+- It prioritizes correctness and transparency.
+- Unsupported operations fall back loudly, not silently.
+- Lazy execution + DuckDB optimization can yield noticeable performance gains.
+- Prudence lets you balance convenience vs safety.
