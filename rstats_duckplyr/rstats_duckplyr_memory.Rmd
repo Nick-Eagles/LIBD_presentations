@@ -63,7 +63,7 @@ Conceptually:
 ## Restoring Original dplyr Behavior
 
 ```{r}
-duckplyr::methods_restore()
+methods_restore()
 ```
 
 ## Fallback Behavior and Diagnostics
@@ -76,7 +76,7 @@ duckplyr::methods_restore()
 Enable fallback diagnostics:
 
 ```{r}
-duckplyr::fallback_config(info = TRUE)
+fallback_config(info = TRUE)
 ```
 
 This is critical for understanding what is (and is not) accelerated.
@@ -96,13 +96,13 @@ Setup: two small tibbles.
 ```{r}
 
 keys <- tibble(
-  key = c("A", "B", "C", "D")
+    key = c("A", "B", "C")
 )
 
 anno <- tibble(
-  key = c("A","A","A","B","B","C","C","C","C"),
-  gene = c("G1","G2","G3","G4","G5","G6","G7","G8","G9"),
-  cluster = c(1,1,1,2,2,3,3,3,3)
+    key = c("A","A","A","B","B","C","C","C","C"),
+    gene = c("G1","G2","G3","G4","G5","G6","G7","G8","G9"),
+    cluster = c(1,1,1,2,2,3,3,3,3)
 )
 
 keys
@@ -116,11 +116,11 @@ anno
 #### dplyr semantics (`multiple = "any"`)
 
 ```{r}
-res_dplyr_any <- dplyr::left_join(
-  keys,
-  anno,
-  by = "key",
-  multiple = "any"
+res_dplyr_any <- left_join(
+    keys,
+    anno,
+    by = "key",
+    multiple = "any"
 )
 
 res_dplyr_any
@@ -142,12 +142,12 @@ lazy_keys <- lazy_dt(keys)
 lazy_anno <- lazy_dt(anno)
 
 res_dtplyr_any <- left_join(
-  lazy_keys,
-  lazy_anno,
-  by = "key",
-  multiple = "any"
-) |>
-  as_tibble()
+        lazy_keys,
+        lazy_anno,
+        by = "key",
+        multiple = "any"
+    ) |>
+    as_tibble()
 
 res_dtplyr_any
 nrow(res_dtplyr_any)
@@ -159,28 +159,25 @@ in behavior was silent. This particular example is still an open GitHub issue
 
 #### duckplyr: correct result with explicit fallback
 
-Ideally, make sure fallback diagnostics are enabled, then run the same join:
+Ideally, make sure fallback diagnostics are enabled, then run the same join. Note that
+we earlier called `methods_restore()`, and so must re-enable the `duckplyr` methods first:
 
 ```{r}
-duckplyr::fallback_config(info = TRUE)
+methods_overwrite()
 
 res_duckplyr_any <- left_join(
-  keys,
-  anno,
-  by = "key",
-  multiple = "any"
+    keys,
+    anno,
+    by = "key",
+    multiple = "any"
 )
 
 res_duckplyr_any
 nrow(res_duckplyr_any)
 ```
 
-You should see a message like:
-
-```
-> Cannot process duckplyr query with DuckDB, falling back to dplyr.  
-> ℹ `multiple` not supported
-```
+Note the clear warning message that DuckDB cannot process the `multiple = "any"` argument
+and is falling back to `dplyr` to still produce identical results.
 
 ## Mini End-to-End Workflow with `read_csv_duckdb()`
 
@@ -190,52 +187,38 @@ when working with much larger datasets.
 ### Create a small CSV
 
 ```{r}
-library(readr)
-
 tmp_csv <- tempfile(fileext = ".csv")
 
 demo_tbl <- tibble(
-  sample_id = rep(c("S1", "S2"), each = 6),
-  gene = rep(paste0("G", 1:6), times = 2),
-  count = c(10, 0, 3, 7, 1, 0, 4, 9, 0, 2, 8, 1),
-  cluster = rep(c("C1","C2","C3"), times = 4)
+    sample_id = rep(c("S1", "S2"), each = 6),
+    gene = rep(paste0("G", 1:6), times = 2),
+    count = c(10, 0, 3, 7, 1, 0, 4, 9, 0, 2, 8, 1),
+    cluster = rep(c("C1","C2","C3"), times = 4)
 )
 
 write_csv(demo_tbl, tmp_csv)
-tmp_csv
 ```
-
-### Read lazily with duckplyr
-
-```{r}
-df <- read_csv_duckdb(tmp_csv)
-
-df
-class(df)
-```
-
-This does not eagerly read the entire CSV into R.
 
 ### Run a dplyr pipeline
 
-```{r}
-pipeline <- df |>
-  filter(count > 0) |>
-  group_by(sample_id, cluster) |>
-  summarise(
-    n_genes = n(),
-    total = sum(count),
-    .groups = "drop"
-  ) |>
-  arrange(desc(total))
+Unfortunately in this case the syntax must be changed subtly to work with `duckplyr` (note the
+`.by` argument in `summarise()` replacing `group_by()`).
 
-pipeline
+```{r}
+pipeline <- read_csv_duckdb(tmp_csv) |>
+    filter(count > 0) |>
+    summarise(
+        .by = c("sample_id", "cluster"),
+        n_genes = n(),
+        total = sum(count)
+    ) |>
+    arrange(desc(total))
 ```
 
 At this stage:
 
 - The computation is represented as a query plan.
-- DuckDB can optimize execution.
+- No data has been materialized or even read into R yet
 
 ### Explicitly materialize results
 
