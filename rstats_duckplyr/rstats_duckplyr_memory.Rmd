@@ -10,10 +10,6 @@ output:
     df_print: paged
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(eval = FALSE)
-```
-
 ## Motivation and Goals
 
 - Explain what `duckplyr` is and how it integrates with `dplyr`.
