@@ -26,16 +26,18 @@ num_cores=(1 2 4 8)
 
 for script_name in "${script_names[@]}"; do
     for cores in "${num_cores[@]}"; do
-        job_id=$(
-            sbatch
-                --parsable
-                -c $cores
-                -o logs/${script_name%.sh}_c${cores}.txt
-                -e logs/${script_name%.sh}_c${cores}.txt
-                $script_name
-        )
-        echo "$job_id" >> results/job_ids.txt
-        echo "Submitted ${script_name} with ${cores} cores: job ID $job_id"
+        for iteration in 1 2; do
+            job_id=$(
+                sbatch
+                    --parsable
+                    -c $cores
+                    -o logs/${script_name%.sh}_c${cores}_i${iteration}.txt
+                    -e logs/${script_name%.sh}_c${cores}_i${iteration}.txt
+                    $script_name
+            )
+            echo "$job_id" >> results/job_ids.txt
+            echo "Submitted ${script_name} (iteration ${iteration}) with ${cores} cores: job ID $job_id"
+        done
     done
 
     sleep 1000
