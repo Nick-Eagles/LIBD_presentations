@@ -28,11 +28,11 @@ for script_name in "${script_names[@]}"; do
     for cores in "${num_cores[@]}"; do
         for iteration in 1 2; do
             job_id=$(
-                sbatch
-                    --parsable
-                    -c $cores
-                    -o logs/${script_name%.sh}_c${cores}_i${iteration}.txt
-                    -e logs/${script_name%.sh}_c${cores}_i${iteration}.txt
+                sbatch \
+                    --parsable \
+                    -c $cores \
+                    -o logs/${script_name%.sh}_c${cores}_i${iteration}.txt \
+                    -e logs/${script_name%.sh}_c${cores}_i${iteration}.txt \
                     $script_name
             )
             echo "$job_id" >> results/job_ids.txt
