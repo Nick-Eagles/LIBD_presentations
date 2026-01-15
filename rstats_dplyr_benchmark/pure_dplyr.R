@@ -2,14 +2,9 @@ library(here)
 library(tidyverse)
 
 ficture_input_path = here(
-    'processed-data', '10_HD_bin_level', 'new_samples2', 'ficture_harmony',
-    'ficture_outputs', 'normalized', 'k_10', 'analysis', 'nF10.d_12',
-    'normalized_joined_input.tsv.gz'
+    'rstats_dplyr_benchmark', 'data', 'normalized_joined_input.tsv.gz'
 )
-col_data_path = here(
-    'processed-data', '10_HD_bin_level', 'new_samples2', 'ficture_harmony',
-    'rstats_duckplyr', 'col_data.csv.gz'
-)
+col_data_path = here('rstats_dplyr_benchmark', 'data', 'col_data.csv.gz')
 ficture_colnames = c('sample_id', 'barcode', 'factor_K1')
 
 ficture_df = read_tsv(
