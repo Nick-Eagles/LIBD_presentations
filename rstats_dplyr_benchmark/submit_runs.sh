@@ -32,7 +32,7 @@ for script_name in "${script_names[@]}"; do
                 sbatch \
                     --parsable \
                     -c $cores \
-                    --nodelist=compute-178 \
+                    --nodelist=compute-166 \
                     -o logs/${script_name%.sh}_c${cores}_i${iteration}.txt \
                     -e logs/${script_name%.sh}_c${cores}_i${iteration}.txt \
                     $script_name

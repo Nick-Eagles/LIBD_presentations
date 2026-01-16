@@ -22,6 +22,7 @@ module load conda_R/4.5
 ## List current modules for reproducibility
 module list
 
+export TMPDIR=$MYSCRATCH
 /usr/bin/time -v Rscript pure_duckplyr.R
 
 echo "**** Job ends ****"
