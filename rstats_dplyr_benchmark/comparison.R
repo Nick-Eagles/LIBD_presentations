@@ -46,13 +46,12 @@ p = mean_df |>
     ggplot(aes(x = cpus, y = wallclock_time_min, color = name, group = name)) +
         geom_line() +
         geom_point() +
-        facet_wrap(~metric, scales = 'free_y') +
         scale_x_continuous(trans = 'log2', breaks = c(1, 2, 4, 8)) +
         theme_bw(base_size = 20) +
         labs(
             x = 'Number of cores', y = 'Wallclock Time (min)',
             color = 'Libraries'
         )
-pdf(file.path(plot_dir, 'wallclock_time.pdf'), width = 10, height = 6)
+pdf(file.path(plot_dir, 'wallclock_time.pdf'))
 print(p)
 dev.off()
