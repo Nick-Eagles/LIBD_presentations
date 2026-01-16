@@ -20,6 +20,7 @@ echo "Node name: ${HOSTNAME}"
 echo "Task id: ${SLURM_ARRAY_TASK_ID}"
 
 mkdir -p results
+rm -f results/job_ids.txt
 
 script_names=(dplyr_fread.sh duckplyr_fread.sh pure_dplyr.sh pure_duckplyr.sh)
 num_cores=(1 2 4 8)
@@ -31,6 +32,7 @@ for script_name in "${script_names[@]}"; do
                 sbatch \
                     --parsable \
                     -c $cores \
+                    --nodelist=compute-178 \
                     -o logs/${script_name%.sh}_c${cores}_i${iteration}.txt \
                     -e logs/${script_name%.sh}_c${cores}_i${iteration}.txt \
                     $script_name
@@ -39,8 +41,6 @@ for script_name in "${script_names[@]}"; do
             echo "Submitted ${script_name} (iteration ${iteration}) with ${cores} cores: job ID $job_id"
         done
     done
-
-    sleep 1000
 done
 
 echo "**** Job ends ****"

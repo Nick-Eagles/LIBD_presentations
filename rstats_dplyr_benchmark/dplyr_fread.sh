@@ -22,7 +22,7 @@ module load conda_R/4.5
 ## List current modules for reproducibility
 module list
 
-Rscript dplyr_fread.R
+/usr/bin/time -v Rscript dplyr_fread.R
 
 echo "**** Job ends ****"
 date
