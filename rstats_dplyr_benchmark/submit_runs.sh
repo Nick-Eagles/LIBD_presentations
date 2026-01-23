@@ -32,6 +32,7 @@ for script_name in "${script_names[@]}"; do
                 sbatch \
                     --parsable \
                     -c $cores \
+                    --mem=30G \
                     --nodelist=compute-166 \
                     -o logs/${script_name%.sh}_c${cores}_i${iteration}.txt \
                     -e logs/${script_name%.sh}_c${cores}_i${iteration}.txt \
@@ -39,6 +40,8 @@ for script_name in "${script_names[@]}"; do
             )
             echo "$job_id" >> results/job_ids.txt
             echo "Submitted ${script_name} (iteration ${iteration}) with ${cores} cores: job ID $job_id"
+
+            sleep 120
         done
     done
 done

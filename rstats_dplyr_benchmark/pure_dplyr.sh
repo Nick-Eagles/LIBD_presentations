@@ -1,6 +1,5 @@
 #!/bin/bash
 #SBATCH -p katun
-#SBATCH --mem=150G
 #SBATCH --job-name=pure_dplyr
 #SBATCH -t 1-0:00:00
 
@@ -22,7 +21,6 @@ module load conda_R/4.5
 ## List current modules for reproducibility
 module list
 
-export TMPDIR=$MYSCRATCH
 /usr/bin/time -v Rscript pure_dplyr.R
 
 echo "**** Job ends ****"

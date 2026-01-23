@@ -5,9 +5,11 @@ library(tidyverse)
 library(data.table)
 
 ficture_input_path = here(
-    'rstats_dplyr_benchmark', 'data', 'normalized_joined_input.tsv.gz'
+    'rstats_dplyr_benchmark', 'data', 'smaller_ficture_output.tsv.gz'
 )
-col_data_path = here('rstats_dplyr_benchmark', 'data', 'col_data.csv.gz')
+col_data_path = here(
+    'rstats_dplyr_benchmark', 'data', 'smaller_col_data.csv.gz'
+)
 ficture_colnames = c('sample_id', 'barcode', 'factor_K1')
 
 num_cores = as.integer(Sys.getenv("SLURM_CPUS_PER_TASK"))
