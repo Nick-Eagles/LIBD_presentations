@@ -1,0 +1,41 @@
+---
+title: "BiocParallel at JHPCE"
+author: "Nick Eagles"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
+output:
+  html_document:
+    theme: readable
+    toc: true
+    toc_depth: 3
+    df_print: paged
+---
+
+## Introduction
+
+We'll introduce the basic functions and backends provided by `BiocParallel` by checking
+out [their main vignette](https://www.bioconductor.org/packages/release/bioc/vignettes/BiocParallel/inst/doc/Introduction_To_BiocParallel.html).
+
+## Interactive Demo
+
+We'll run some parallel code at [JHPCE](https://jhpce.jhu.edu/) in an interactive
+session (`srun`) where we've requested 4 cores. We'll use the following scripts:
+
+- `monitoring_sce.R`: We'll compare how two different backends, `MulticoreParam` and `SnowParam`, handle memory usage when working on chunks of a `SingleCellExperiment` object.
+- `monitoring_vector.R`: Using a large numeric vector of a known size, we'll see how memory may be copied even with `MulticoreParam`.
+
+While these R scripts are running, on the same compute node, we'll use `ps` to monitor memory usage of the parent and child processes. Surprisingly, I haven't found a simpler way to do this that accurately tracks memory usage. Since we'll be using the `conda_R` module, we can search for its path to narrow down the process results:
+
+```{bash, eval = FALSE}
+ps -u $USER -o rss,etime,cmd --sort=-etime | grep 'conda_R'
+```
+
+## Some Quick Tips
+
+When parallelizing large, embarrasingly parallel tasks, using an array job is generally better than using `BiocParallel`.
+
+- No overhead of sending large results from child processes to the parent
+- Individual tasks failing don't tank the entire job, and are easily resubmitted
+- Even `MulticoreParam`, memory may be unexpectedly copied on long-running jobs. From the `BiocParallel` vignette:
+
+> A subtle cost is that R’s garbage collector runs periodically, and ‘marks’ memory as in use. This effectively triggers a copy of the marked memory. R’s generational garbage collector is triggered at difficult-to-predict times; the effect in a long-running forked process is that the memory is eventually copied.
+
