@@ -3,6 +3,7 @@ library(bench)
 library(sessioninfo)
 library(tidyverse)
 library(here)
+library(qs2)
 
 # Import command-line parameters
 spec <- matrix(
@@ -53,11 +54,6 @@ my_read_qs2 = function() {
     sce = qs_read(file.path(out_dir, 'sce.qs2'))
 }
 
-aaa = function() {
-    Sys.sleep(2)
-    return(1)
-}
-
 export_df = function(the_df, filename) {
     the_df |>
         mutate(
@@ -65,7 +61,9 @@ export_df = function(the_df, filename) {
             mem_alloc_gb = as.numeric(mem_alloc) / 1e9
         ) |>
         dplyr::rename(median_time = median) |>
-        select(ser_method, dataset, compr_level, median_time, mem_alloc_gb) |>
+        select(
+            ser_method, dataset, compr_level, action, median_time, mem_alloc_gb
+        ) |>
         write_csv(file.path(result_dir, filename))
 }
 
